@@ -1,10 +1,8 @@
 import React, { useEffect } from 'react';
 import logo from './logo.svg';
 import './App.css';
-import * as iq from 'image-q';
+import * as iq from 'image-q'
 import ImageToColors from 'image-to-colors';
-import sizeOf from 'image-size';
-
 
 function App() {
   useEffect(() => {
@@ -13,22 +11,35 @@ function App() {
       const pixels = await ImageToColors.getFromExternalSource(image, {
         setImageCrossOriginToAnonymous: true
       });
-      const sz = sizeOf(image);
-      const rgb = Uint8Array.from(pixels.flatMap((p) => [...p, 255]));
-      console.log(sz, rgb);
+      
+      //const sz = sizeOf(image);
+      const rgba = Uint8Array.from(pixels.flatMap((p) => [...p, 255]));
+      console.log(rgba)
 
       const pointContainer = iq.utils.PointContainer.fromUint8Array(
-        rgb,
-        sz.width || 100,
-        sz.height || 100,
+        rgba,
+        600,600
       );
+    const amount = 10;
+      const distanceCalculator = new iq.distance.EuclideanBT709NoAlpha();
+      const paletteQuantizer = new iq.palette.WuQuant(distanceCalculator, amount);
+      paletteQuantizer.sample(pointContainer);
+      const qPalette = paletteQuantizer.quantizeSync();
+    console.log(qPalette);
     
-    const distanceCalculator = new iq.distance.EuclideanBT709NoAlpha();
-    const paletteQuantizer = new iq.palette.WuQuant(distanceCalculator, 10);
-    paletteQuantizer.sample(pointContainer);
-    const qPalette = paletteQuantizer.quantizeSync();
+      const quantizedImage = iq.applyPaletteSync(pointContainer, qPalette, {
+        colorDistanceFormula: 'euclidean-bt709-noalpha',
+        imageQuantization: 'nearest'
+      });
+      
+      console.log(quantizedImage)
+    
+      const histogram = new iq.palette.ColorHistogram(1, amount);
+      histogram.sample(quantizedImage);
+      const imp = histogram.getImportanceSortedColorsIDXI32()
+     
 
-    console.log(qPalette.getPointContainer().toUint8Array());
+    console.log(imp);
   })();
   })
   return (
